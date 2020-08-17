@@ -1,0 +1,7 @@
+# Project exclude paths
+/gmall-common/target/
+.idea
+*.iml
+
+# Project exclude paths
+/gmall-mock/target/
