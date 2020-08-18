@@ -39,7 +39,7 @@ object DauAPp {
         val filteredStartupLogStream = startupLogStream.mapPartitions(startupLogIt => {
             val client: Jedis = RedisUtil.getRedisClient
             val result = startupLogIt.filter(log => {
-                val key = s"mids:${log.logDate}"
+                val key = s"mids:${log.logDate}"  // mids+log.logData
                 val r = client.sadd(key, log.mid)
                 r == 1
             })
