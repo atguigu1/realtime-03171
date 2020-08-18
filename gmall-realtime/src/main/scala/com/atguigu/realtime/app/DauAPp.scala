@@ -35,7 +35,7 @@ object DauAPp {
             result == 1
         })*/
         
-        // 3.一个分区建立一个到redis的连接
+        // 3.去重  一个分区建立一个到redis的连接
         val filteredStartupLogStream = startupLogStream.mapPartitions(startupLogIt => {
             val client: Jedis = RedisUtil.getRedisClient
             val result = startupLogIt.filter(log => {
@@ -46,12 +46,15 @@ object DauAPp {
             client.close()
             result
         })
-    
         
         // 5. 把数据写入到hbase(phoenix)   print/save../foreachRDD
-        
+        import org.apache.phoenix.spark._
         filteredStartupLogStream.foreachRDD(rdd => {
-//            rdd.saveToPhoenix
+            rdd.saveToPhoenix(
+                "GMALL_DAU_0317",
+                Seq("MID", "UID", "APPID", "AREA", "OS", "CHANNEL", "LOGTYPE", "VERSION", "TS", "LOGDATE", "LOGHOUR"),
+                zkUrl = Option("hadoop102,hadoop103,hadoop104:2181")
+            )
         })
         
         // 启动流

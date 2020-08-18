@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper SYSTEM "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.atguigu.gmallpublisher.mapper.DauMapper">
+    <select id="getDau" resultType="java.lang.Long">
+        /*sql语句*/
+        select count(*) COUNT from GMALL_DAU_0317 where LOGDATE=#{date }
+    </select>
+
+    <select id="getHourDau" resultMap="hourDauList">
+        select LOGHOUR, count(*) COUNT from GMALL_DAU_0317 where LOGDATE=#{date } group by LOGHOUR
+    </select>
+    <resultMap id="hourDauList" type="java.util.Map"></resultMap>
+
+</mapper>
