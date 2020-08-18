@@ -20,7 +20,7 @@ case $1 in
     sudo /usr/local/webserver/nginx/sbin/nginx -s stop
 
     for host in hadoop102 hadoop103 hadoop104 ; do
-        echo "在 $host 启动日志服务器"
+        echo "在 $host 停止日志服务器"
         ssh $host "ps -ef | awk '/gmall/ && !/awk/ {print \$2}' | xargs kill -9"
     done
    ;;
