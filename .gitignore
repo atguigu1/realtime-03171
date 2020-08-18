@@ -5,5 +5,5 @@
 
 # Project exclude paths
 /gmall-mock/target/
-*/target
+/*/target
 /*/test
