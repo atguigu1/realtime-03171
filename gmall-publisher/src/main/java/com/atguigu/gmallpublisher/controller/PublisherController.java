@@ -23,7 +23,7 @@ public class PublisherController {
     @Autowired
     PublisherService service;
 
-    //http://localhost:8070/realtime-total?date=2020-02-11
+    //http://localhost:8070/realtime-total?date=2020-08-19
     @GetMapping("/realtime-total")
     public String realtimeTotal(String date) {
         Long totalDau = service.getDau(date);
@@ -41,10 +41,18 @@ public class PublisherController {
         map2.put("value", "233");
         result.add(map2);
 
+
+        Map<String, String> map3 = new HashMap<>();
+        map3.put("id", "order_amount");
+        map3.put("name", "新增交易额");
+        map3.put("value", service.getTotalAmount(date).toString());
+        result.add(map3);
+
         return JSON.toJSONString(result);
     }
 
-    // http://localhost:8070/realtime-hour?id=dau&date=2020-08-16
+
+    // http://localhost:8070/realtime-hour?id=dau&date=2020-08-19
     @GetMapping("/realtime-hour")
     public String realtimeHour(String id, String date) {
         if ("dau".equals(id)) {
@@ -57,13 +65,20 @@ public class PublisherController {
 
             return JSON.toJSONString(result);
 
-        } else {
+        } else if("order_amount".equals(id)){
+            Map<String, Double> today = service.getHourAmount(date);
+            Map<String, Double> yesterday = service.getHourAmount(getYesterday(date));
 
+            HashMap<String, Map<String, Double>> result = new HashMap<>();
+            result.put("today", today);
+            result.put("yesterday", yesterday);
+
+            return JSON.toJSONString(result);
         }
         return "ok";
     }
 
-    private String getYesterday(String date){
+    private String getYesterday(String date) {
         return LocalDate.parse(date).minusDays(1).toString();
     }
 
@@ -72,7 +87,9 @@ public class PublisherController {
 
 /*
 [{"id":"dau","name":"新增日活","value":1200},
-{"id":"new_mid","name":"新增设备","value":233} ]
+{"id":"new_mid","name":"新增设备","value":233 },
+{"id":"order_amount","name":"新增交易额","value":1000.2 }]
+
 
 
 
