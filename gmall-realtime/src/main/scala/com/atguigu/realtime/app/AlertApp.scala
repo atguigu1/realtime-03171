@@ -71,7 +71,7 @@ object AlertApp extends BaseAPp {
             .filter(_._1)
             .map(_._2)
             .foreachRDD(rdd => {
-                // 次数完成写入到es中
+                // 写入到es中
             })
     }
     
