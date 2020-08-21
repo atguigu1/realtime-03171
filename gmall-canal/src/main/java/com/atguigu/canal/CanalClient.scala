@@ -9,6 +9,7 @@ import com.alibaba.otter.canal.protocol.CanalEntry
 import com.alibaba.otter.canal.protocol.CanalEntry.{EntryType, EventType, RowChange}
 import com.atguigu.util.Constant
 import com.google.protobuf.ByteString
+import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig}
 
 import scala.collection.JavaConverters._
 
@@ -69,7 +70,8 @@ object CanalClient {
             // 3.1 所有的数据都在这里: Entry 表示一条sql导致的表
             val entries: util.List[CanalEntry.Entry] = msg.getEntries
             if (entries != null && entries.size() > 0) {
-                // 3.1 解析entry
+                println(entries)
+                /*// 3.1 解析entry
                 
                 for (entry <- entries.asScala) {
                     if (entry != null && entry.hasEntryType && entry.getEntryType == EntryType.ROWDATA) {
@@ -80,12 +82,14 @@ object CanalClient {
                         handleRowDatas(rowDatas, entry.getHeader.getTableName, rowChange.getEventType)
                     }
                     
-                }
+                }*/
                 
             } else {
+                System.out.println(msg);
                 System.out.println("没有拉倒数据, 3s后重新拉取");
                 Thread.sleep(3000)
             }
+            
         }
     }
 }

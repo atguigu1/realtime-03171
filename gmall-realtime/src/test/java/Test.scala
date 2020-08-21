@@ -1,4 +1,4 @@
-import java.time.{LocalDate, LocalTime}
+
 
 /**
  * Author atguigu
@@ -6,8 +6,25 @@ import java.time.{LocalDate, LocalTime}
  */
 object Test {
     def main(args: Array[String]): Unit = {
-        /*println(LocalDate.ofEpochDay(1597717327904L/1000/60/60/24).toString)
-        println(LocalTime.ofSecondOfDay(1597717327904L / 1000).getHour)
-        */
+        
+        val arr1 = Array(30, 50, 70, 60, 10, 20)
+        
+        try {
+            arr1.foreach(x => {
+                if (x > 50) return
+                println(x)
+            })
+        }catch {
+            case e =>
+                println(e)
+        }
+        
+        System.out.println("abc.....")
+        
+    }
+    
+    def foo(x: Int): Unit = {
+        
+        // 后面....
     }
 }

@@ -13,6 +13,7 @@ import org.apache.spark.streaming.dstream.DStream
  * Date 2020/8/19 14:58
  */
 object OrderApp extends BaseAPp {
+    override var appName: String = "OrderApp"
     override def doSomething(ssc: StreamingContext): Unit = {
         val sourceStream: DStream[String] = MyKafkaUtil.getKafkaStream(ssc, Constant.ORDER_INFO_TOPIC)
     
@@ -30,4 +31,6 @@ object OrderApp extends BaseAPp {
             
         })
     }
+    
+    
 }

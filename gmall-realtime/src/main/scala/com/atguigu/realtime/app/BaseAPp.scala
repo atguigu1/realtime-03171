@@ -8,8 +8,10 @@ import org.apache.spark.streaming.{Seconds, StreamingContext}
  * Date 2020/8/19 14:59
  */
 trait BaseAPp {
+    var appName: String
+    
     def main(args: Array[String]): Unit = {
-        val conf: SparkConf = new SparkConf().setMaster("local[2]").setAppName("DauAPp")
+        val conf: SparkConf = new SparkConf().setMaster("local[2]").setAppName(appName)
         val ssc = new StreamingContext(conf, Seconds(3))
         
         doSomething(ssc)
