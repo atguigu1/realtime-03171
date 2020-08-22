@@ -3,7 +3,7 @@ package com.atguigu.realtime.app
 import java.util
 
 import com.atguigu.realtime.bean.{AlertInfo, EventLog}
-import com.atguigu.realtime.util.MyKafkaUtil
+import com.atguigu.realtime.util.{ESUtil, MyKafkaUtil}
 import com.atguigu.util.Constant
 import org.apache.spark.streaming.dstream.DStream
 import org.apache.spark.streaming.{Minutes, Seconds, StreamingContext}
@@ -65,13 +65,18 @@ object AlertApp extends BaseAPp {
                 (uids.size() >= 3 && !isClicked, AlertInfo(mid, uids, items, events, System.currentTimeMillis()))
         }
         
-        
+        alertInfoStream.cache()
+        alertInfoStream.print(1000)
         // 3. 把预警信息吸入到es中
         alertInfoStream
             .filter(_._1)
             .map(_._2)
             .foreachRDD(rdd => {
                 // 写入到es中
+                rdd.foreachPartition((infoIt: Iterator[AlertInfo]) => {
+                    // 每分钟只记录一次预警   id:  mid_分钟
+                    ESUtil.insertBulk("gmall_coupon_alert", infoIt.map(info => (s"${info.mid}:${System.currentTimeMillis()/1000/60}", info)))
+                })
             })
     }
     

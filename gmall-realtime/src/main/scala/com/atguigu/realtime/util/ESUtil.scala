@@ -8,7 +8,7 @@ import io.searchbox.core.{Bulk, Index}
  * Author atguigu
  * Date 2020/8/22 13:51
  */
-object ESDemo {
+object ESUtil {
     // 先得到es的客户端
     val factory = new JestClientFactory
     val esUrl = "http://hadoop102:9200"
