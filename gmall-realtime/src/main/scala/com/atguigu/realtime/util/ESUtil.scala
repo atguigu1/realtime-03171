@@ -1,8 +1,10 @@
 package com.atguigu.realtime.util
 
+import com.atguigu.realtime.bean.AlertInfo
 import io.searchbox.client.config.HttpClientConfig
 import io.searchbox.client.{JestClient, JestClientFactory}
 import io.searchbox.core.{Bulk, Index}
+import org.apache.spark.rdd.RDD
 
 /**
  * Author atguigu
@@ -74,6 +76,18 @@ object ESUtil {
         client.execute(action)
         client.shutdownClient()
     }
+    
+    
+    
+    implicit class RichRDD(rdd: RDD[AlertInfo]){
+        def saveToES(index: String) = {
+            rdd.foreachPartition((infoIt: Iterator[AlertInfo]) => {
+                // 每分钟只记录一次预警   id:  mid_分钟
+                ESUtil.insertBulk(index, infoIt.map(info => (s"${info.mid}:${System.currentTimeMillis()/1000/60}", info)))
+            })
+        }
+    }
+    
     
 }
 
