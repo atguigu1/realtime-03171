@@ -86,7 +86,6 @@ object CanalClient {
                         val rowDatas: util.List[CanalEntry.RowData] = rowChange.getRowDatasList
                         handleRowDatas(rowDatas, entry.getHeader.getTableName, rowChange.getEventType)
                     }
-                    
                 }
                 
             } else {
