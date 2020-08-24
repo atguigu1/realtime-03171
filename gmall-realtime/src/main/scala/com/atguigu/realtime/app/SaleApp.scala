@@ -70,7 +70,6 @@ object SaleApp extends BaseAPp {
             sendToRedis(client, 30 * 60, s"order_detail:${orderDetail.order_id}:${orderDetail.id}", Serialization.write(orderDetail))
         }
         
-        
         // 1. 把两个流转成k-v形式, 然后才可以进行join
         val orderIdToOrderInfoStream: DStream[(String, OrderInfo)] = orderInfoStream.map(orderInfo => (orderInfo.id, orderInfo))
         val orderIdToOrderDetailStream: DStream[(String, OrderDetail)] = orderDetailStream.map(orderDetail => (orderDetail.order_id, orderDetail))
