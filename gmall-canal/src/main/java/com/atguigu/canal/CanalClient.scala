@@ -12,6 +12,7 @@ import com.google.protobuf.ByteString
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig}
 
 import scala.collection.JavaConverters._
+import scala.util.Random
 
 /**
  * Author atguigu
@@ -54,7 +55,12 @@ object CanalClient {
                 val value: String = column.getValue
                 obj.put(name, value)
             }
-            sendToKafka(topic, obj.toJSONString)
+            new Thread(){
+                override def run(): Unit = {
+                    Thread.sleep(new Random().nextInt(20 * 1000))
+                    sendToKafka(topic, obj.toJSONString)
+                }
+            }.start()
         }
     }
     
