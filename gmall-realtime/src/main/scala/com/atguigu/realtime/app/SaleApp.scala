@@ -1,9 +1,13 @@
 package com.atguigu.realtime.app
 
+import java.util.Properties
+
 import com.alibaba.fastjson.JSON
-import com.atguigu.realtime.bean.{OrderDetail, OrderInfo, SaleDetail}
+import com.atguigu.realtime.bean.{OrderDetail, OrderInfo, SaleDetail, UserInfo}
 import com.atguigu.realtime.util.{MyKafkaUtil, RedisUtil}
 import com.atguigu.util.Constant
+import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.streaming.StreamingContext
 import org.apache.spark.streaming.dstream.DStream
 import org.json4s.jackson.Serialization
@@ -60,12 +64,12 @@ object SaleApp extends BaseAPp {
         
         def cacheOrderInfo(client: Jedis, orderInfo: OrderInfo): Unit = {
             implicit val f = org.json4s.DefaultFormats
-            sendToRedis(client, 30 * 60 , s"order_info:${orderInfo.id}", Serialization.write(orderInfo))
+            sendToRedis(client, 30 * 60, s"order_info:${orderInfo.id}", Serialization.write(orderInfo))
         }
         
         def cacheOrderDetail(client: Jedis, orderDetail: OrderDetail): Unit = {
             implicit val f = org.json4s.DefaultFormats
-            sendToRedis(client, 30 * 60 , s"order_detail:${orderDetail.order_id}:${orderDetail.id}", Serialization.write(orderDetail))
+            sendToRedis(client, 30 * 60, s"order_detail:${orderDetail.order_id}:${orderDetail.id}", Serialization.write(orderDetail))
         }
         
         
@@ -135,17 +139,59 @@ object SaleApp extends BaseAPp {
             
             result
         })
-       
+        
+    }
+    
+    /**
+     * 给saleDetail添加user信息
+     *
+     * @param saleDetail
+     * @param ssc
+     * @return
+     */
+    def joinUserInfo(saleDetail: DStream[SaleDetail], ssc: StreamingContext): DStream[SaleDetail] = {
+        // 1. 先读到user数据   DataFrame
+        val url = "jdbc:mysql://hadoop102:3306/gmall?userSSL=false"
+        val spark = SparkSession
+            .builder()
+            .config(ssc.sparkContext.getConf)
+            .getOrCreate()
+        import spark.implicits._
+        
+        def readUserInfos(ids: String) = {
+            spark.read
+                .format("jdbc")
+                .option("query", s"select * from user_info where id in('${ids}')")
+                .option("url", url)
+                .option("user", "root")
+                .option("password", "aaaaaa")
+                .load()
+                .as[UserInfo]
+                .rdd
+        }
+        
+        
+        // a  在driver 只执行一次
+        // 2. 连接流和df
+        saleDetail.map(saleInfo => (saleInfo.user_id, saleInfo)).transform((saleInfoRDD: RDD[(String, SaleDetail)]) => {
+            saleInfoRDD.cache()
+            // b  在driver 每个批次执行一次
+            val ids = saleInfoRDD.map(_._2.user_id).collect().mkString(", ")
+            val userInfoRDD = readUserInfos(ids).map(user => (user.id, user))
+            saleInfoRDD.join(userInfoRDD).map {
+                case (_, (saleInfo, userInfo)) =>
+                    saleInfo.mergeUserInfo(userInfo)
+            }
+        })
     }
     
     override def doSomething(ssc: StreamingContext): Unit = {
         // 1. 获取两个流: order_info oder_detail
         val (orderInfoStream, orderDetailStream) = getOrderInfoAndOrderDetailStream(ssc)
         // 2. 对前面的两个流做join   全连接
-        val saleDetail: DStream[SaleDetail] = fullJoin(orderInfoStream, orderDetailStream)
-        saleDetail.print(10000)
+        var saleDetail: DStream[SaleDetail] = fullJoin(orderInfoStream, orderDetailStream)
         // 3. 去mysql反查user_info, 补齐user的数据
-        
+        saleDetail = joinUserInfo(saleDetail, ssc)
         
         // 4. 把数据(宽表数据)写入到es
     }
