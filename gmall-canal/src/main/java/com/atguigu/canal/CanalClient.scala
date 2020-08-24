@@ -38,17 +38,23 @@ object CanalClient {
      */
     def handleRowDatas(rowDatas: util.List[CanalEntry.RowData], tableName: String, eventType: CanalEntry.EventType) = {
         if (tableName == "order_info" && eventType == EventType.INSERT && rowDatas != null && !rowDatas.isEmpty) {
-            for (rowData <- rowDatas.asScala) {
-                val obj = new JSONObject()
-                // 所有的列
-                val columns: util.List[CanalEntry.Column] = rowData.getAfterColumnsList
-                for (column <- columns.asScala) {
-                    val name: String = column.getName
-                    val value: String = column.getValue
-                    obj.put(name, value)
-                }
-                sendToKafka(Constant.ORDER_INFO_TOPIC, obj.toJSONString)
+            handleRowData(rowDatas, Constant.ORDER_INFO_TOPIC)
+        }else if(tableName == "order_detail" && eventType == EventType.INSERT && rowDatas != null && !rowDatas.isEmpty){
+            handleRowData(rowDatas, Constant.ORDER_DETAIL_TOPIC)
+        }
+    }
+    
+    private def handleRowData(rowDatas: util.List[CanalEntry.RowData], topic: String): Unit = {
+        for (rowData <- rowDatas.asScala) {
+            val obj = new JSONObject()
+            // 所有的列
+            val columns: util.List[CanalEntry.Column] = rowData.getAfterColumnsList
+            for (column <- columns.asScala) {
+                val name: String = column.getName
+                val value: String = column.getValue
+                obj.put(name, value)
             }
+            sendToKafka(topic, obj.toJSONString)
         }
     }
     
@@ -70,8 +76,7 @@ object CanalClient {
             // 3.1 所有的数据都在这里: Entry 表示一条sql导致的表
             val entries: util.List[CanalEntry.Entry] = msg.getEntries
             if (entries != null && entries.size() > 0) {
-                println(entries)
-                /*// 3.1 解析entry
+                // 3.1 解析entry
                 
                 for (entry <- entries.asScala) {
                     if (entry != null && entry.hasEntryType && entry.getEntryType == EntryType.ROWDATA) {
@@ -82,7 +87,7 @@ object CanalClient {
                         handleRowDatas(rowDatas, entry.getHeader.getTableName, rowChange.getEventType)
                     }
                     
-                }*/
+                }
                 
             } else {
                 System.out.println(msg);
