@@ -1,10 +1,8 @@
 package com.atguigu.realtime.app
 
-import java.util.Properties
-
 import com.alibaba.fastjson.JSON
 import com.atguigu.realtime.bean.{OrderDetail, OrderInfo, SaleDetail, UserInfo}
-import com.atguigu.realtime.util.{MyKafkaUtil, RedisUtil}
+import com.atguigu.realtime.util.{ESUtil, MyKafkaUtil, RedisUtil}
 import com.atguigu.util.Constant
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
@@ -30,11 +28,11 @@ object SaleApp extends BaseAPp {
      */
     def getOrderInfoAndOrderDetailStream(ssc: StreamingContext): (DStream[OrderInfo], DStream[OrderDetail]) = {
         val orderInfoStream = MyKafkaUtil
-            .getKafkaStream(ssc, Constant.ORDER_INFO_TOPIC, "bigdata")
+            .getKafkaStream(ssc, Constant.ORDER_INFO_TOPIC, "bigdata1")
             .map(json => JSON.parseObject(json, classOf[OrderInfo]))
         
         val orderDetailStream = MyKafkaUtil
-            .getKafkaStream(ssc, Constant.ORDER_DETAIL_TOPIC, "bigdata")
+            .getKafkaStream(ssc, Constant.ORDER_DETAIL_TOPIC, "bigdata2")
             .map(json => JSON.parseObject(json, classOf[OrderDetail]))
         
         (orderInfoStream, orderDetailStream)
@@ -84,7 +82,7 @@ object SaleApp extends BaseAPp {
             val result = it.flatMap {
                 // order_info 和order_detail的数据同时到达
                 case (orderId, (Some(orderInfo), Some(orderDetail))) =>
-                    println("some some")
+                    println(s"${orderId}  some some")
                     // 1. 把order_info信息写入到缓存
                     cacheOrderInfo(client, orderInfo)
                     // 2. 把order_info的信息和oder_detail的信息封装到一起
@@ -104,7 +102,7 @@ object SaleApp extends BaseAPp {
                     saleDetails
                 // order_info 和order_detail的数据没有同时到达
                 case (orderId, (Some(orderInfo), None)) =>
-                    println("some none")
+                    println(s"${orderId} some none")
                     // 1. 把order_info信息写入到缓存
                     cacheOrderInfo(client, orderInfo)
                     // 2. 去order_detail的缓存中查找对应的信息.  注意: 需要删除order_detail中的信息
@@ -118,10 +116,9 @@ object SaleApp extends BaseAPp {
                     })
                     saleDetails
                 case (orderId, (None, Some(orderDetail))) =>
-                    println("none some")
+                    println(s"${orderId} none some")
                     // 1. 先去缓存查找对应的orderInfo
                     val orderInfoString: String = client.get(s"order_info:${orderDetail.order_id}")
-                    
                     // 2. 如果找到, 则组合成saleDetail. 如果没有找到, 应该把order_detail缓存
                     if (orderInfoString != null) {
                         val orderInfo = JSON.parseObject(orderInfoString, classOf[OrderInfo])
@@ -132,6 +129,7 @@ object SaleApp extends BaseAPp {
                         // b: 返回空集合
                         Nil
                     }
+                
             }
             
             // 3. 关闭redis
@@ -159,9 +157,12 @@ object SaleApp extends BaseAPp {
         import spark.implicits._
         
         def readUserInfos(ids: String) = {
+            println(ids)
             spark.read
                 .format("jdbc")
-                .option("query", s"select * from user_info where id in('${ids}')")
+                // 只查询需要的用户数据, 不需要的可以不查
+                // '1','2','3'..
+                .option("query", s"select * from user_info where id in (${ids})")
                 .option("url", url)
                 .option("user", "root")
                 .option("password", "aaaaaa")
@@ -169,19 +170,28 @@ object SaleApp extends BaseAPp {
                 .as[UserInfo]
                 .rdd
         }
-        
-        
         // a  在driver 只执行一次
         // 2. 连接流和df
         saleDetail.map(saleInfo => (saleInfo.user_id, saleInfo)).transform((saleInfoRDD: RDD[(String, SaleDetail)]) => {
             saleInfoRDD.cache()
             // b  在driver 每个批次执行一次
-            val ids = saleInfoRDD.map(_._2.user_id).collect().mkString(", ")
+            // 获取到所有需要用户的id
+            val ids = saleInfoRDD.map(_._2.user_id).collect().mkString("'","','", "'")   // 1','2','3
             val userInfoRDD = readUserInfos(ids).map(user => (user.id, user))
             saleInfoRDD.join(userInfoRDD).map {
                 case (_, (saleInfo, userInfo)) =>
                     saleInfo.mergeUserInfo(userInfo)
             }
+        })
+    }
+    
+    def save2ES(saleDetail: DStream[SaleDetail]): Unit = {
+        //        saleDetail.cache()
+        //        saleDetail.print(10000)
+        saleDetail.foreachRDD(rdd => {
+            rdd.foreachPartition(saleDetalIt => {
+                ESUtil.insertBulk("gmall_sale_detail", saleDetalIt.map(sale => (sale.order_id + ":" + sale.order_detail_id, sale)))
+            })
         })
     }
     
@@ -192,8 +202,8 @@ object SaleApp extends BaseAPp {
         var saleDetail: DStream[SaleDetail] = fullJoin(orderInfoStream, orderDetailStream)
         // 3. 去mysql反查user_info, 补齐user的数据
         saleDetail = joinUserInfo(saleDetail, ssc)
-        
         // 4. 把数据(宽表数据)写入到es
+        save2ES(saleDetail)
     }
 }
 
