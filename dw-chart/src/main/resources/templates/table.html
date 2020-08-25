@@ -32,6 +32,7 @@
     <link href="assets/css/bootstrap-datetimepicker.min.css" rel="stylesheet"/>
     <script src="assets/js/bootstrap-datetimepicker.min.js"></script>
     <script src="assets/js/echarts.min.js"></script>
+
     <script type="text/javascript">
         function submitCondition() {
             $("#dataTables-example").DataTable().ajax.reload();
@@ -87,9 +88,13 @@
                     },
                     "dataFilter": function (data) {//json是服务器端返回的数据
 
-                        console.log(data);
                         var json = eval('(' + data + ')');
                         //alert(json)
+                        console.log("--------")
+                        console.log(data);
+                        console.log(json);
+                        console.log(json.data.stats[0].options)
+                        console.log("---------")
                         showAnalysis1(json.data.stats[0].options)
                         showAnalysis2(json.data.stats[1].options)
                         console.log(json)
